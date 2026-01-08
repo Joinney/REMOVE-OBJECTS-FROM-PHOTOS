@@ -297,6 +297,5 @@ export default async function superResolution(
   const url = imageDataToDataURL(imageData)
   console.timeEnd('postProcess')
 
-    return url
-
+  return url
 }
