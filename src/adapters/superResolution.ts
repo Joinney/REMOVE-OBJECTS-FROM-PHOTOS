@@ -1,3 +1,4 @@
+import * as ort from 'onnxruntime-web'
 /* eslint-disable no-console */
 /* eslint-disable no-plusplus */
 import cv, { Mat } from 'opencv-ts'
@@ -170,7 +171,7 @@ async function tileProc(
 function processImage(
   img: HTMLImageElement,
   canvasId?: string
-): Promise<Uint8Array> {
+): Promise<Float32Array> {
   return new Promise((resolve, reject) => {
     try {
       const src = cv.imread(img)
@@ -243,6 +244,9 @@ function imageDataToDataURL(imageData: ImageData) {
 
   // 绘制 imageData 到 canvas
   const ctx = canvas.getContext('2d')
+  if (!ctx) {
+    throw new Error('Could not get 2d context from canvas')
+  }
   ctx.putImageData(imageData, 0, 0)
 
   // 导出为数据 URL
