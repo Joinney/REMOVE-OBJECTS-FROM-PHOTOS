@@ -1,10 +1,11 @@
-import * as ort from 'onnxruntime-web'
 /* eslint-disable camelcase */
 /* eslint-disable no-plusplus */
+/* eslint-disable no-console */
+import * as ort from 'onnxruntime-web'
 import cv, { Mat } from 'opencv-ts'
 import { ensureModel } from './cache'
 import { getCapabilities } from './util'
-import type { modelType } from './cache'
+
 // ort.env.debug = true
 // ort.env.logLevel = 'verbose'
 // ort.env.webgpu.profilingMode = 'default'
@@ -18,51 +19,55 @@ function loadImage(url: string): Promise<HTMLImageElement> {
     img.src = url
   })
 }
+
 function imgProcess(img: Mat) {
   const channels = new cv.MatVector()
-  cv.split(img, channels) // 分割通道
+  cv.split(img, channels) // Phân tách kênh màu
 
-  const C = channels.size() // 通道数
-  const H = img.rows // 图像高度
-  const W = img.cols // 图像宽度
+  const C = channels.size() // Số kênh
+  const H = img.rows // Chiều cao
+  const W = img.cols // Chiều rộng
 
-  const chwArray = new Uint8Array(C * H * W) // 创建新的数组来存储转换后的数据
+  const chwArray = new Uint8Array(C * H * W) // Mảng lưu dữ liệu chuyển đổi
 
   for (let c = 0; c < C; c++) {
-    const channelData = channels.get(c).data // 获取单个通道的数据
+    const channelData = channels.get(c).data // Lấy dữ liệu từng kênh
     for (let h = 0; h < H; h++) {
       for (let w = 0; w < W; w++) {
         chwArray[c * H * W + h * W + w] = channelData[h * W + w]
-        // chwArray[c * H * W + h * W + w] = channelData[h * W + w]
       }
     }
   }
 
-  channels.delete() // 清理内存
-  return chwArray // 返回转换后的数据
+  channels.delete() // Giải phóng bộ nhớ
+  return chwArray
 }
+
 function markProcess(img: Mat) {
   const channels = new cv.MatVector()
-  cv.split(img, channels) // 分割通道
+  cv.split(img, channels) // Phân tách kênh màu
 
-  const C = 1 // 通道数
-  const H = img.rows // 图像高度
-  const W = img.cols // 图像宽度
+  const C = 1 // Số kênh (Mask chỉ có 1)
+  const H = img.rows
+  const W = img.cols
 
-  const chwArray = new Uint8Array(C * H * W) // 创建新的数组来存储转换后的数据
+  const chwArray = new Uint8Array(C * H * W)
 
   for (let c = 0; c < C; c++) {
-    const channelData = channels.get(0).data // 获取单个通道的数据
+    const channelData = channels.get(0).data
     for (let h = 0; h < H; h++) {
       for (let w = 0; w < W; w++) {
-        chwArray[c * H * W + h * W + w] = (channelData[h * W + w] !== 255) * 255
+        // Fix lỗi Prettier dòng 59: ngắt dòng và ép kiểu rõ ràng
+        chwArray[c * H * W + h * W + w] =
+          ((channelData[h * W + w] !== 255) as unknown as number) * 255
       }
     }
   }
 
-  channels.delete() // 清理内存
-  return chwArray // 返回转换后的数据
+  channels.delete()
+  return chwArray
 }
+
 function processImage(
   img: HTMLImageElement,
   canvasId?: string
@@ -71,7 +76,7 @@ function processImage(
     try {
       const src = cv.imread(img)
       const src_rgb = new cv.Mat()
-      // 将图像从RGBA转换为RGB
+      // Chuyển từ RGBA sang RGB
       cv.cvtColor(src, src_rgb, cv.COLOR_RGBA2RGB)
       if (canvasId) {
         cv.imshow(canvasId, src_rgb)
@@ -95,7 +100,7 @@ function processMark(
       const src = cv.imread(img)
       const src_grey = new cv.Mat()
 
-      // 将图像从RGBA转换为二值化
+      // Chuyển từ RGBA sang Grayscale (nhị phân)
       cv.cvtColor(src, src_grey, cv.COLOR_BGR2GRAY)
 
       if (canvasId) {
@@ -110,6 +115,7 @@ function processMark(
     }
   })
 }
+
 function postProcess(uint8Data: Uint8Array, width: number, height: number) {
   const chwToHwcData = []
   const size = width * height
@@ -117,7 +123,7 @@ function postProcess(uint8Data: Uint8Array, width: number, height: number) {
   for (let h = 0; h < height; h++) {
     for (let w = 0; w < width; w++) {
       for (let c = 0; c < 3; c++) {
-        // RGB通道
+        // RGB channels
         const chwIndex = c * size + h * width + w
         const pixelVal = uint8Data[chwIndex]
         let newPiex = pixelVal
@@ -126,28 +132,28 @@ function postProcess(uint8Data: Uint8Array, width: number, height: number) {
         } else if (pixelVal < 0) {
           newPiex = 0
         }
-        chwToHwcData.push(newPiex) // 归一化反转
+        chwToHwcData.push(newPiex)
       }
-      chwToHwcData.push(255) // Alpha通道
+      chwToHwcData.push(255) // Alpha channel
     }
   }
   return chwToHwcData
 }
 
-function imageDataToDataURL(imageData) {
-  // 创建 canvas
+function imageDataToDataURL(imageData: ImageData) {
+  // Tạo canvas
   const canvas = document.createElement('canvas')
   canvas.width = imageData.width
   canvas.height = imageData.height
 
-  // 绘制 imageData 到 canvas
+  // Vẽ imageData lên canvas
   const ctx = canvas.getContext('2d')
   if (!ctx) {
     throw new Error('Could not get 2d context from canvas')
   }
   ctx.putImageData(imageData, 0, 0)
 
-  // 导出为数据 URL
+  // Xuất ra Data URL
   return canvas.toDataURL()
 }
 
@@ -172,6 +178,7 @@ function configEnv(capabilities: {
   }
   console.log('env', ort.env.wasm)
 }
+
 const resizeMark = (
   image: HTMLImageElement,
   width: number,
@@ -182,7 +189,7 @@ const resizeMark = (
     canvas.width = width
     canvas.height = height
 
-    // 将图片绘制到canvas上，并调整大小
+    // Vẽ và resize ảnh trên canvas
     const ctx = canvas.getContext('2d')
     if (!ctx) {
       reject(new Error('Unable to get canvas context'))
@@ -190,10 +197,8 @@ const resizeMark = (
     }
     ctx.drawImage(image, 0, 0, width, height)
 
-    // 获取调整大小后的图片URL
     const resizedImageUrl = canvas.toDataURL()
 
-    // 创建一个新的Image对象并设置其src为调整大小后的图片URL
     const resizedImage = new Image()
     resizedImage.onload = () => resolve(resizedImage)
     resizedImage.onerror = () =>
@@ -201,7 +206,9 @@ const resizeMark = (
     resizedImage.src = resizedImageUrl
   })
 }
+
 let model: ort.InferenceSession | null = null
+
 export default async function inpaint(
   imageFile: File | HTMLImageElement,
   maskBase64: string
@@ -246,6 +253,10 @@ export default async function inpaint(
     originalImg.width,
   ])
 
+  if (!model) {
+    throw new Error('Model failed to initialize')
+  }
+
   const Feed: {
     [key: string]: any
   } = {
@@ -261,11 +272,14 @@ export default async function inpaint(
 
   console.time('postProcess')
   const outsTensor = results[model.outputNames[0]]
+
+  // Ép kiểu as Uint8Array để fix lỗi TS2345
   const chwToHwcData = postProcess(
-    outsTensor.data,
+    outsTensor.data as Uint8Array,
     originalImg.width,
     originalImg.height
   )
+
   const imageData = new ImageData(
     new Uint8ClampedArray(chwToHwcData),
     originalImg.width,
