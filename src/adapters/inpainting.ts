@@ -1,4 +1,4 @@
-// @ts-nocheck
+import * as ort from 'onnxruntime-web'
 /* eslint-disable camelcase */
 /* eslint-disable no-plusplus */
 import cv, { Mat } from 'opencv-ts'
@@ -142,13 +142,21 @@ function imageDataToDataURL(imageData) {
 
   // 绘制 imageData 到 canvas
   const ctx = canvas.getContext('2d')
+  if (!ctx) {
+    throw new Error('Could not get 2d context from canvas')
+  }
   ctx.putImageData(imageData, 0, 0)
 
   // 导出为数据 URL
   return canvas.toDataURL()
 }
 
-function configEnv(capabilities) {
+function configEnv(capabilities: {
+  webgpu: any
+  wasm?: boolean
+  simd: any
+  threads: any
+}) {
   ort.env.wasm.wasmPaths =
     'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.16.3/dist/'
   if (capabilities.webgpu) {
@@ -193,7 +201,7 @@ const resizeMark = (
     resizedImage.src = resizedImageUrl
   })
 }
-let model: ArrayBuffer | null = null
+let model: ort.InferenceSession | null = null
 export default async function inpaint(
   imageFile: File | HTMLImageElement,
   maskBase64: string

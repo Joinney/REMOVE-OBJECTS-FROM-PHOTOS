@@ -43,18 +43,18 @@ async function tileProc(
   callback: (progress: number) => void
 ) {
   const inputDims = inputTensor.dims
-  const imageW = inputDims[3]
-  const imageH = inputDims[2]
+  const imageW = inputDims[3] as number
+  const imageH = inputDims[2] as number
 
   const rOffset = 0
   const gOffset = imageW * imageH
   const bOffset = imageW * imageH * 2
 
   const outputDims = [
-    inputDims[0],
-    inputDims[1],
-    inputDims[2] * 4,
-    inputDims[3] * 4,
+    inputDims[0] as number,
+    inputDims[1] as number,
+    (inputDims[2] as number) * 4,
+    (inputDims[3] as number) * 4,
   ]
   const outputTensor = new ort.Tensor(
     'float32',
@@ -74,8 +74,8 @@ async function tileProc(
   const tilePadding = 6
   const tileSizePre = tileSize - tilePadding * 2
 
-  const tilesx = Math.ceil(inputDims[3] / tileSizePre)
-  const tilesy = Math.ceil(inputDims[2] / tileSizePre)
+  const tilesx = Math.ceil((inputDims[3] as number) / tileSizePre)
+  const tilesy = Math.ceil((inputDims[2] as number) / tileSizePre)
 
   const { data } = inputTensor
 
@@ -252,7 +252,7 @@ function imageDataToDataURL(imageData: ImageData) {
   // 导出为数据 URL
   return canvas.toDataURL()
 }
-let model: ArrayBuffer | null = null
+let model: ort.InferenceSession | null = null
 export default async function superResolution(
   imageFile: File | HTMLImageElement,
   callback: (progress: number) => void
